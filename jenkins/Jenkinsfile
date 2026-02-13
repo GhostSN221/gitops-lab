@@ -1,0 +1,20 @@
+pipeline {
+  agent any
+  environment {
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub')
+  }
+  stages {
+    stage('Checkout') {
+      steps { git 'https://github.com/tonuser/gitops-lab.git' }
+    }
+    stage('Build Docker') {
+      steps { sh 'docker build -t tonuser/gitops-lab:${GIT_COMMIT} ./app' }
+    }
+    stage('Push Docker') {
+      steps { sh 'docker login -u $DOCKERHUB_CREDENTIALS_USR -p $DOCKERHUB_CREDENTIALS_PSW && docker push tonuser/gitops-lab:${GIT_COMMIT}' }
+    }
+    stage('Deploy to Kubernetes') {
+      steps { sh 'kubectl set image deployment/gitops-app gitops-app=tonuser/gitops-lab:${GIT_COMMIT}' }
+    }
+  }
+}

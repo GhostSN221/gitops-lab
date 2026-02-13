@@ -1,0 +1,15 @@
+# Docker
+*.log
+*.env
+*.pyc
+__pycache__/
+
+# Kubernetes
+*.yaml~
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
