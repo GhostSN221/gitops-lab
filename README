@@ -1,0 +1,22 @@
+# GitOps Lab – Advanced CI/CD
+
+🚀 Déploiement d'une application Flask conteneurisée sur Kubernetes avec **Jenkins + ArgoCD**.
+
+## Structure
+- **app/** : code de l’application Flask + Dockerfile
+- **k8s/** : manifests Kubernetes (Deployment, Service, Ingress)
+- **jenkins/** : Jenkinsfile pipeline CI/CD
+
+## Features
+- Build automatique de l'image Docker
+- Push sur Docker Hub
+- Déploiement sur Kubernetes
+- GitOps via ArgoCD
+- Rollback possible en 1 clic
+
+## Setup
+1. Cloner le repo
+2. Configurer Jenkins credentials pour Docker Hub
+3. Installer ArgoCD sur le cluster
+4. Déployer l’app via ArgoCD
+5. Push un commit → pipeline CI/CD automatique
