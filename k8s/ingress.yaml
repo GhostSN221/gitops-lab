@@ -1,18 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: gitops-app-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+  name: my-app-ingress
 spec:
   rules:
-  - host: gitops-lab.local
+  - host: myapp.local
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: gitops-app-service
+            name: my-app-service
             port:
               number: 80
