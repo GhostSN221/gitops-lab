@@ -1,20 +1,58 @@
 pipeline {
-  agent any
-  environment {
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-  }
-  stages {
-    stage('Checkout') {
-      steps { git 'https://github.com/tonuser/gitops-lab.git' }
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "mouhmedsn02/my-app"
+        TAG = "${BUILD_NUMBER}"
+        GIT_REPO = "https://github.com/GhostSN221/gitops-lab.git"
+        GIT_BRANCH = "main"
     }
-    stage('Build Docker') {
-      steps { sh 'docker build -t tonuser/gitops-lab:${GIT_COMMIT} ./app' }
+
+    stages {
+
+        stage('Checkout Source') {
+            steps {
+                git credentialsId: 'github-creds', url: 'https://github.com/GhostSN221/gitops-lab.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE:$TAG .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+
+                    sh """
+                    echo $PASS | docker login -u $USER --password-stdin
+                    docker push $DOCKER_IMAGE:$TAG
+                    docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:latest
+                    docker push $DOCKER_IMAGE:latest
+                    """
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifest') {
+            steps {
+                sh """
+                git clone $GIT_REPO
+                cd argocd-manifests
+
+                sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
+
+                git config user.email "ci@jenkins.com"
+                git config user.name "Jenkins CI"
+
+                git commit -am "🚀 Deploy version $TAG"
+                git push origin $GIT_BRANCH
+                """
+            }
+        }
+
     }
-    stage('Push Docker') {
-      steps { sh 'docker login -u $DOCKERHUB_CREDENTIALS_USR -p $DOCKERHUB_CREDENTIALS_PSW && docker push tonuser/gitops-lab:${GIT_COMMIT}' }
-    }
-    stage('Deploy to Kubernetes') {
-      steps { sh 'kubectl set image deployment/gitops-app gitops-app=tonuser/gitops-lab:${GIT_COMMIT}' }
-    }
-  }
 }
