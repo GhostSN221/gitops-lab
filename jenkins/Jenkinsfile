@@ -1,64 +1,19 @@
-pipeline {
-    agent any
+stage('Update Kubernetes Manifest') {
+    steps {
+        script {
+            sh """
+            # On est déjà dans le dépôt au début du pipeline
+            # (le checkout du début a cloné ici)
 
-    environment {
-        DOCKER_IMAGE = "mouhmedsn02/my-app"
-        TAG = "${BUILD_NUMBER}"
-        GIT_REPO = "https://github.com/GhostSN221/gitops-lab.git"
-        GIT_BRANCH = "main"
-    }
+            git config user.email "ci@jenkins.com"
+            git config user.name "Jenkins CI"
 
-    stages {
+            sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
 
-        stage('Checkout Source') {
-            steps {
-                git branch: "$GIT_BRANCH",
-                    credentialsId: 'Github-toks',   // ton GitHub token
-                    url: "$GIT_REPO"
-            }
+            git add k8s/deployment.yaml
+            git commit -m "Update image to version $TAG" || echo "No changes"
+            git push origin $GIT_BRANCH
+            """
         }
-
-        stage('Build Docker Image') {
-            steps {
-                // Build avec le Dockerfile dans app/
-                sh 'docker build -t $DOCKER_IMAGE:$TAG -f app/Dockerfile app'
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-login',
-                    usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-
-                    sh """
-                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                    docker push \$DOCKER_IMAGE:\$TAG
-                    docker tag \$DOCKER_IMAGE:\$TAG \$DOCKER_IMAGE:latest
-                    docker push \$DOCKER_IMAGE:latest
-                    """
-                }
-            }
-        }
-
-        stage('Update Kubernetes Manifest') {
-            steps {
-                sh """
-                git clone $GIT_REPO argocd-manifests
-                cd argocd-manifests
-
-                # Modifier le fichier Deployment dans k8s/
-                sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
-
-                git config user.email "ci@jenkins.com"
-                git config user.name "Jenkins CI"
-
-                git add k8s/deployment.yaml
-                git commit -m "🚀 Deploy version $TAG"
-                git push origin $GIT_BRANCH
-                """
-            }
-        }
-
     }
 }
-
