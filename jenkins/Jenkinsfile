@@ -12,18 +12,15 @@ pipeline {
 
         stage('Checkout Source') {
             steps {
-<<<<<<< HEAD
-                git credentialsId: 'github-creds', url: 'https://github.com/GhostSN221/gitops-lab.git'
-=======
                 git branch: "$GIT_BRANCH",
-                    credentialsId: 'Github-toks',   // <- ton GitHub token
+                    credentialsId: 'Github-toks',   // ton GitHub token
                     url: "$GIT_REPO"
->>>>>>> a0939ea (ADD JENKINFILE)
             }
         }
 
         stage('Build Docker Image') {
             steps {
+                // Spécifie le Dockerfile et le contexte correct
                 sh 'docker build -t $DOCKER_IMAGE:$TAG -f app/Dockerfile app'
             }
         }
