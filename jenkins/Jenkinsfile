@@ -9,6 +9,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Source') {
             steps {
                 git branch: "$GIT_BRANCH",
@@ -37,26 +38,26 @@ pipeline {
             }
         }
 
-        stage('Update Kubernetes Manifest') {
+        stage('Update Deployment YAML') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'Github-toks',
-                        usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
-                        sh """
-                        git config user.email "ci@jenkins.com"
-                        git config user.name "Jenkins CI"
-
-                        # Modifier l'image dans deployment.yaml
-                        sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
-
-                        # Commit et push
-                        git add k8s/deployment.yaml
-                        git commit -m "Update image to version $TAG" || echo "No changes"
-                        git push https://\${GIT_USER}:\${GIT_PASS}@github.com/GhostSN221/gitops-lab.git $GIT_BRANCH
-                        """
-                    }
-                }
+                sh """
+                sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' k8s/deployment.yaml
+                git config user.email "ci@jenkins.com"
+                git config user.name "Jenkins CI"
+                git add k8s/deployment.yaml
+                git commit -m "🚀 Update image to $TAG"
+                git push origin $GIT_BRANCH
+                """
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline completed. ArgoCD will handle deployment automatically."
+        }
+        failure {
+            echo "❌ Pipeline failed."
         }
     }
 }
