@@ -1,4 +1,4 @@
-pipeline {
+kpipeline {
     agent any
 
     environment {
@@ -20,7 +20,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                // Spécifie le Dockerfile et le contexte correct
+                // Build avec le Dockerfile dans app/
                 sh 'docker build -t $DOCKER_IMAGE:$TAG -f app/Dockerfile app'
             }
         }
@@ -46,12 +46,13 @@ pipeline {
                 git clone $GIT_REPO argocd-manifests
                 cd argocd-manifests
 
-                sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
+                # Modifier le fichier Deployment dans k8s/
+                sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
 
                 git config user.email "ci@jenkins.com"
                 git config user.name "Jenkins CI"
 
-                git add deployment.yaml
+                git add k8s/deployment.yaml
                 git commit -m "🚀 Deploy version $TAG"
                 git push origin $GIT_BRANCH
                 """
@@ -60,3 +61,4 @@ pipeline {
 
     }
 }
+
