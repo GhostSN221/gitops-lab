@@ -40,19 +40,21 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 script {
-                    sh """
-                    # On est déjà dans le dépôt (checkout du début)
-                    git config user.email "ci@jenkins.com"
-                    git config user.name "Jenkins CI"
-                    
-                    # Mettre à jour l'image
-                    sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
-                    
-                    # Commit et push
-                    git add k8s/deployment.yaml
-                    git commit -m "Update image to version $TAG" || echo "No changes"
-                    git push origin $GIT_BRANCH
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'Github-toks',
+                        usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                        sh """
+                        git config user.email "ci@jenkins.com"
+                        git config user.name "Jenkins CI"
+
+                        # Modifier l'image dans deployment.yaml
+                        sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
+
+                        # Commit et push
+                        git add k8s/deployment.yaml
+                        git commit -m "Update image to version $TAG" || echo "No changes"
+                        git push https://\${GIT_USER}:\${GIT_PASS}@github.com/GhostSN221/gitops-lab.git $GIT_BRANCH
+                        """
+                    }
                 }
             }
         }
