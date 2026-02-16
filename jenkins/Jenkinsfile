@@ -12,26 +12,32 @@ pipeline {
 
         stage('Checkout Source') {
             steps {
+<<<<<<< HEAD
                 git credentialsId: 'github-creds', url: 'https://github.com/GhostSN221/gitops-lab.git'
+=======
+                git branch: "$GIT_BRANCH",
+                    credentialsId: 'Github-toks',   // <- ton GitHub token
+                    url: "$GIT_REPO"
+>>>>>>> a0939ea (ADD JENKINFILE)
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:$TAG .'
+                sh 'docker build -t $DOCKER_IMAGE:$TAG -f app/Dockerfile app'
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-login',
+                    usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
 
                     sh """
-                    echo $PASS | docker login -u $USER --password-stdin
-                    docker push $DOCKER_IMAGE:$TAG
-                    docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:latest
-                    docker push $DOCKER_IMAGE:latest
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    docker push \$DOCKER_IMAGE:\$TAG
+                    docker tag \$DOCKER_IMAGE:\$TAG \$DOCKER_IMAGE:latest
+                    docker push \$DOCKER_IMAGE:latest
                     """
                 }
             }
@@ -40,7 +46,7 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 sh """
-                git clone $GIT_REPO
+                git clone $GIT_REPO argocd-manifests
                 cd argocd-manifests
 
                 sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
@@ -48,7 +54,8 @@ pipeline {
                 git config user.email "ci@jenkins.com"
                 git config user.name "Jenkins CI"
 
-                git commit -am "🚀 Deploy version $TAG"
+                git add deployment.yaml
+                git commit -m "🚀 Deploy version $TAG"
                 git push origin $GIT_BRANCH
                 """
             }
