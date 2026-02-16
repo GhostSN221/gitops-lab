@@ -1,19 +1,60 @@
-stage('Update Kubernetes Manifest') {
-    steps {
-        script {
-            sh """
-            # On est déjà dans le dépôt au début du pipeline
-            # (le checkout du début a cloné ici)
+pipeline {
+    agent any
 
-            git config user.email "ci@jenkins.com"
-            git config user.name "Jenkins CI"
+    environment {
+        DOCKER_IMAGE = "mouhmedsn02/my-app"
+        TAG = "${BUILD_NUMBER}"
+        GIT_REPO = "https://github.com/GhostSN221/gitops-lab.git"
+        GIT_BRANCH = "main"
+    }
 
-            sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
+    stages {
+        stage('Checkout Source') {
+            steps {
+                git branch: "$GIT_BRANCH",
+                    credentialsId: 'Github-toks',
+                    url: "$GIT_REPO"
+            }
+        }
 
-            git add k8s/deployment.yaml
-            git commit -m "Update image to version $TAG" || echo "No changes"
-            git push origin $GIT_BRANCH
-            """
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE:$TAG -f app/Dockerfile app'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-login',
+                    usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    docker push \$DOCKER_IMAGE:\$TAG
+                    docker tag \$DOCKER_IMAGE:\$TAG \$DOCKER_IMAGE:latest
+                    docker push \$DOCKER_IMAGE:latest
+                    """
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifest') {
+            steps {
+                script {
+                    sh """
+                    # On est déjà dans le dépôt (checkout du début)
+                    git config user.email "ci@jenkins.com"
+                    git config user.name "Jenkins CI"
+                    
+                    # Mettre à jour l'image
+                    sed -i "s|image:.*|image: $DOCKER_IMAGE:$TAG|" k8s/deployment.yaml
+                    
+                    # Commit et push
+                    git add k8s/deployment.yaml
+                    git commit -m "Update image to version $TAG" || echo "No changes"
+                    git push origin $GIT_BRANCH
+                    """
+                }
+            }
         }
     }
 }
